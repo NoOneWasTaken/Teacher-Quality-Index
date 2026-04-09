@@ -1,0 +1,9 @@
+{
+  "name": "hackathon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KUxKIFF Hackathon 2026",
+  "author": "Team Orchestrators",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0"
+}
