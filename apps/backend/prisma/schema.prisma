@@ -8,8 +8,186 @@ datasource db {
   provider = "postgresql"
 }
 
-model Test {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+model Institution {
+  id               String            @id @default(dbgenerated("gen_random_uuid()"))
+  name             String
+  hostDomain       String            @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+  students         Student[]
+  faculties        Faculty[]
+  departments      Department[]
+  classes          Class[]
+  semesterSessions SemesterSession[]
+}
+
+model Class {
+  id               String            @id @default(dbgenerated("gen_random_uuid()"))
+  name             String
+  institutionId    String
+  institution      Institution       @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  sections         Section[]
+  students         Student[]
+  semesterSessions SemesterSession[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+
+  @@unique([institutionId, name])
+}
+
+model Section {
+  id               String            @id @default(dbgenerated("gen_random_uuid()"))
+  name             String
+  classId          String
+  class            Class             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  semesterSessions SemesterSession[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+
+  @@unique([id, classId])
+  @@unique([classId, name])
+}
+
+model Student {
+  id              String              @id @default(dbgenerated("gen_random_uuid()"))
+  name            String
+  email           String              @unique
+  universityEmail String              @unique
+  studentId       String              @unique
+  gender          Gender
+  idCardPhoto     Bytes
+  institutionId   String
+  classId         String
+  institution     Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  class           Class               @relation(fields: [classId], references: [id], onDelete: Restrict)
+  sessionTrackers SemSessionTracker[]
+  reviews         Review[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+}
+
+model Faculty {
+  id               String            @id @default(dbgenerated("gen_random_uuid()"))
+  name             String
+  email            String            @unique
+  universityEmail  String            @unique
+  gender           Gender
+  idCardPhoto      Bytes
+  linkedin         String
+  facultyId        String            @unique
+  institutionId    String
+  institution      Institution       @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  departments      Department[]
+  semesterSessions SemesterSession[]
+  reviews          Review[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+
+  @@unique([id, institutionId])
+}
+
+model Department {
+  id            String      @id @default(dbgenerated("gen_random_uuid()"))
+  name          String
+  icon          String
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  faculties     Faculty[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+}
+
+model SemesterSession {
+  id            String              @id @default(dbgenerated("gen_random_uuid()"))
+  institutionId String
+  facultyId     String
+  classId       String
+  sectionId     String
+  startDate     DateTime
+  endDate       DateTime
+  subjectCode   String
+  subjectName   String
+  sem           Int
+  institution   Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  faculty       Faculty             @relation(fields: [facultyId, institutionId], references: [id, institutionId], onDelete: Restrict)
+  class         Class               @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section       Section             @relation(fields: [sectionId, classId], references: [id, classId], onDelete: Restrict)
+  trackers      SemSessionTracker[]
+  reviews       Review[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @default(now()) @updatedAt
+
+  @@index([institutionId])
+  @@index([facultyId])
+  @@index([classId, sectionId])
+}
+
+model SemSessionTracker {
+  id                String          @id @default(dbgenerated("gen_random_uuid()"))
+  semesterSessionId String
+  studentId         String
+  semStartDate      DateTime
+  semEndDate        DateTime
+  semBuffer         DateTime
+  ratingStart       DateTime
+  ratingEnd         DateTime
+  semesterSession   SemesterSession @relation(fields: [semesterSessionId], references: [id], onDelete: Cascade)
+  student           Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+
+  @@unique([semesterSessionId, studentId])
+  @@index([studentId])
+}
+
+model Quote {
+  quote  String @id
+  author String
+}
+
+model Question {
+  questionId String @id
+  question   String
+  options    Json   @default("{\"1\":\"Worst\",\"2\":\"Bad\",\"3\":\"Average\",\"4\":\"Good\",\"5\":\"Best\"}")
+  answers    ReviewAnswer[]
+}
+
+model Review {
+  id                String          @id @default(dbgenerated("gen_random_uuid()"))
+  studentId         String
+  facultyId         String
+  semesterSessionId String
+  student           Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  faculty           Faculty         @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+  semesterSession   SemesterSession @relation(fields: [semesterSessionId], references: [id], onDelete: Cascade)
+  answers           ReviewAnswer[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+
+  @@unique([studentId, semesterSessionId])
+  @@index([facultyId])
+  @@index([semesterSessionId])
+}
+
+model ReviewAnswer {
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  reviewId   String
+  questionId String
+  score      Int
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [questionId], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([reviewId, questionId])
+  @@index([questionId])
 }

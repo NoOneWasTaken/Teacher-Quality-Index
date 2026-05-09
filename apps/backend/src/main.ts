@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from 'app.module';
-import { AUTH_GUARD } from 'auth.middleware';
+import { AppModule } from './app.module';
+import { AUTH_GUARD } from './auth.middleware';
 import { ConsoleLogger } from '@nestjs/common';
 
 async function bootstrap() {
@@ -15,6 +15,7 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
+  app.setGlobalPrefix('api');
   // app.use(AUTH_GUARD);
 
   await app.listen(process.env.PORT ?? 8080);
